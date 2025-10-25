@@ -1,0 +1,15 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+  # Service 1: Python web app
+  web:
+    build: .  # Build the image from the Dockerfile in this directory
+    ports:
+      - "80:5000"  # Map host port 80 to container port 5000
+    volumes:
+      - .:/app  # Mount current directory into /app in container (for live reload)
+
+  # Service 2: The Redis database
+  db:
+    image: "redis:alpine" # Use the official lightweight Redis image
