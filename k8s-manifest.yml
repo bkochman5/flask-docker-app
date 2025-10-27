@@ -1,6 +1,19 @@
 # k8s-manifest.yml
 
-# --- Part 1: The Redis Database Deployment ---
+# --- Part 1: A "request" for storage ---
+# This asks K8s for a piece of disk
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc # Name of our storage request
+spec:
+  accessModes:
+    - ReadWriteOnce # Can be used by one node at a time
+  resources:
+    requests:
+      storage: 1Gi 
+---
+# --- Part 2: The Redis Database Deployment (MODIFIED) ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,8 +33,17 @@ spec:
         image: "redis:alpine"
         ports:
         - containerPort: 6379
+        # --- NEW SECTION: Mount the storage ---
+        volumeMounts:
+        - mountPath: /data # Mount the disk inside the container at /data
+          name: redis-storage
+      # --- NEW SECTION: Define the volume to use ---
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-data-pvc # Use the PVC we defined above
 ---
-# --- Part 2: The Redis Database Service ---
+# --- Part 3: The Redis Database Service ---
 apiVersion: v1
 kind: Service
 metadata:
@@ -34,13 +56,13 @@ spec:
   - port: 6379
     targetPort: 6379
 ---
-# --- Part 3: The Flask Web App Deployment ---
+# --- Part 4 & 5: Web App Deployment & Service  ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web-deployment
 spec:
-  replicas: 2 
+  replicas: 2
   selector:
     matchLabels:
       app: web
@@ -51,12 +73,11 @@ spec:
     spec:
       containers:
       - name: flask-web
-        image: bkochman5/flask-docker-app 
+        image: bkochman5/flask-docker-app:v2 
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
 ---
-# --- Part 4: The Flask Web App Service (Exposed) ---
 apiVersion: v1
 kind: Service
 metadata:
@@ -68,4 +89,4 @@ spec:
   ports:
   - port: 80
     targetPort: 5000
-    nodePort: 30007 
+    nodePort: 30007
